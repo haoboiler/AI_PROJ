@@ -29,17 +29,20 @@ class AI(QtCore.QThread):
     finishSignal = QtCore.pyqtSignal(int, int)
 
     # 构造函数里增加形参
-    def __init__(self, board, parent=None):
+    def __init__(self, board, turn ,parent=None):
         super(AI, self).__init__(parent)
         self.board = board
+        self.turn = turn
 
     # 重写 run() 函数
     def run(self):
         self.ai = searcher()
         self.ai.board = self.board
-        score, x, y = self.ai.search(2, 2)
-        print ("x,y: ",x,y)
-        self.finishSignal.emit(x, y)
+        # turn, depth
+        # turn = 2 玩家先手，AI后手
+        # turn = 1 AI先手，玩家后手
+        score, x, y = self.ai.search(self.turn, 2) 
+        self.finishSignal.emit(0, y)
 
 
 # ----------------------------------------------------------------------
@@ -92,8 +95,7 @@ class GoBang(QWidget):
 
         self.mouse_point = LaBel(self)  # 将鼠标图片改为棋子
         self.mouse_point.setScaledContents(True)
-        #gkh: delete the black chess move with mouse
-        #self.mouse_point.setPixmap(self.black)  # 加载黑棋
+        # self.mouse_point.setPixmap(self.black)  # 加载黑棋
         self.mouse_point.setGeometry(270, 270, PIECE, PIECE)
         self.pieces = [LaBel(self) for i in range(225)]  # 新建棋子标签，准备在棋盘上绘制棋子
         for piece in self.pieces:
@@ -111,10 +113,10 @@ class GoBang(QWidget):
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         
         if self.my_turn == QMessageBox.No:
-            self.mouse_point.setPixmap(self.white)  # 加载白棋
+            # self.mouse_point.setPixmap(self.white)  # 加载白棋
             self.ai_down = False
             board = self.chessboard.board()
-            self.AI = AI(board)  # 新建线程对象，传入棋盘参数
+            self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
             self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
             self.AI.start()  # run
 
@@ -124,10 +126,9 @@ class GoBang(QWidget):
         self.drawLines(qp)
         qp.end()
 
-    #gkh: delete the black chess move with mouse
-    #def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
-        # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
-        #self.mouse_point.move(e.x() - 16, e.y() - 16)
+    # def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
+    #     # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
+    #     self.mouse_point.move(e.x() - 16, e.y() - 16)
 
     def mousePressEvent(self, e):  # 玩家下棋
         if e.button() == Qt.LeftButton and self.ai_down == True:
@@ -136,11 +137,17 @@ class GoBang(QWidget):
             if not i is None and not j is None:  # 棋子落在棋盘上，排除边缘
                 if self.chessboard.get_xy_on_logic_state(i, j) == EMPTY:  # 棋子落在空白处
                     self.draw(i, j)
+
                     self.ai_down = False
                     board = self.chessboard.board()
-                    self.AI = AI(board)  # 新建线程对象，传入棋盘参数
+                    if self.piece_now == WHITE: # 玩家先手黑棋 已下完
+                        self.AI = AI(board,2)  # 新建线程对象，传入棋盘参数
+                    else:
+                        self.AI = AI(board,1) # 玩家后手，AI先手
                     self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
                     self.AI.start()  # run
+
+
 
     def AI_draw(self, i, j):
         # if self.step != 0:
@@ -154,8 +161,11 @@ class GoBang(QWidget):
 
         if self.piece_now == BLACK:
             self.pieces[self.step].setPixmap(self.black)  # 放置黑色棋子
+
+
             self.piece_now = WHITE
             self.chessboard.draw_xy(i, j, BLACK)
+
         else:
             self.pieces[self.step].setPixmap(self.white)  # 放置白色棋子
             self.piece_now = BLACK
@@ -165,6 +175,13 @@ class GoBang(QWidget):
         self.sound_piece.play()  # 落子音效
         self.step += 1  # 步数+1
 
+        #gkh: check if there is rule breaker
+        if self.piece_now == WHITE:
+            rulerbreak = self.chessboard.breakrule(i, j)
+            if (rulerbreak == True):
+                self.gameover(2)
+
+        #gkh :modify end at this place
         winner = self.chessboard.anyone_win(i, j)  # 判断输赢
         if winner != EMPTY:
             self.mouse_point.clear()
@@ -194,21 +211,31 @@ class GoBang(QWidget):
     def gameover(self, winner):
         if winner == BLACK:
             self.sound_win.play()
-            reply = QMessageBox.question(self, 'You Win!', 'Continue?',
+            reply = QMessageBox.question(self, 'Black Win!', 'Continue?',
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         else:
             self.sound_defeated.play()
-            reply = QMessageBox.question(self, 'You Lost!', 'Continue?',
+            reply = QMessageBox.question(self, 'Black Lost!', 'Continue?',
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:  # 复位
             self.piece_now = BLACK
-            self.mouse_point.setPixmap(self.black)
+            # self.mouse_point.setPixmap(self.black)
             self.step = 0
             for piece in self.pieces:
                 piece.clear()
             self.chessboard.reset()
             self.update()
+            # ycn's code, 复盘重选先后手
+            self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if self.my_turn == QMessageBox.No:
+                # self.mouse_point.setPixmap(self.white)  # 加载白棋
+                self.ai_down = False
+                board = self.chessboard.board()
+                self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
+                self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
+                self.AI.start()  # run
         else:
             self.close()
 

@@ -45,13 +45,13 @@ class ChessBoard(object):
 
     def anyone_win(self, x, y):
         state = self.get_xy_on_logic_state(x, y)
-        print("state")
-        print(state)
+        #print("state")
+        #print(state)
         for directions in self.__dir:  # 对米字的4个方向分别检测是否有5子相连的棋
             count = 1
             for direction in directions:  # 对落下的棋子的同一条线的两侧都要检测，结果累积
                 point = (x, y)
-                print(point)
+                #print(point)
                 while True:
                     if self.get_xy_on_direction_state(point, direction) == state:
                         count += 1
@@ -61,6 +61,43 @@ class ChessBoard(object):
             if count >= 5:
                 return state
         return EMPTY
+
+    #gkh :implement for double three check
+    def check_connect(self, x, y, connect_number, newdirection = None):
+        state = self.get_xy_on_logic_state(x, y)
+        for directions in self.__dir:
+            count = 1
+            if newdirection != None and newdirection in directions:
+                continue
+            for direction in directions:
+                point = (x,y)
+                while True:
+                    if count == connect_number:                        
+                        return point, direction
+                    elif self.get_xy_on_direction_state(point, direction) == state:
+                        count += 1
+                        point = self.get_next_xy(point, direction)
+                    else:        
+                        break
+        return 0,0
+
+
+    #gkh implement double three check
+    def breakrule(self, x, y):
+        state = self.get_xy_on_logic_state(x, y)
+        newpoint, newdirection = self.check_connect(x, y, 3)
+        #print("check value")
+        #print(newpoint,newdirection)
+        if newpoint != 0:
+            newpoint1, newdirection1 = self.check_connect(newpoint[0], newpoint[1], 3, newdirection)
+            newpoint2, newdirection2 = self.check_connect(x, y, 3, newdirection)
+            if newpoint1 != 0 or newpoint2 != 0:
+                return True
+        return False
+
+
+
+
 
     def reset(self):  # 重置
         self.__board = [[EMPTY for n in range(15)] for m in range(15)]
