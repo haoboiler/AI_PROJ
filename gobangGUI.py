@@ -38,7 +38,7 @@ class AI(QtCore.QThread):
         self.ai = searcher()
         self.ai.board = self.board
         score, x, y = self.ai.search(2, 2)
-        print(x,y)
+        print ("x,y: ",x,y)
         self.finishSignal.emit(x, y)
 
 
@@ -86,13 +86,13 @@ class GoBang(QWidget):
         self.white = QPixmap('img/white.png')
 
         self.piece_now = BLACK  # 黑棋先行
-        self.my_turn = True  # 玩家先行
+        # self.my_turn = False  # 玩家先行
         self.step = 0  # 步数
         self.x, self.y = 1000, 1000
 
         self.mouse_point = LaBel(self)  # 将鼠标图片改为棋子
         self.mouse_point.setScaledContents(True)
-        #self.mouse_point.setPixmap(self.black)  # 加载黑棋 gkh delete for the middle black chess 
+        self.mouse_point.setPixmap(self.black)  # 加载黑棋
         self.mouse_point.setGeometry(270, 270, PIECE, PIECE)
         self.pieces = [LaBel(self) for i in range(225)]  # 新建棋子标签，准备在棋盘上绘制棋子
         for piece in self.pieces:
@@ -105,16 +105,27 @@ class GoBang(QWidget):
         self.setMouseTracking(True)
         self.show()
 
+        # 玩家选择是否先手
+        self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if self.my_turn == QMessageBox.No:
+            self.mouse_point.setPixmap(self.white)  # 加载白棋
+            self.ai_down = False
+            board = self.chessboard.board()
+            self.AI = AI(board)  # 新建线程对象，传入棋盘参数
+            self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
+            self.AI.start()  # run
+
     def paintEvent(self, event):  # 画出指示箭头
         qp = QPainter()
         qp.begin(self)
         self.drawLines(qp)
         qp.end()
 
-    # delete gkh
-    #def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
+    def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
         # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
-        #self.mouse_point.move(e.x() - 16, e.y() - 16)
+        self.mouse_point.move(e.x() - 16, e.y() - 16)
 
     def mousePressEvent(self, e):  # 玩家下棋
         if e.button() == Qt.LeftButton and self.ai_down == True:
@@ -130,9 +141,9 @@ class GoBang(QWidget):
                     self.AI.start()  # run
 
     def AI_draw(self, i, j):
-        if self.step != 0:
-            self.draw(i, j)  # AI
-            self.x, self.y = self.coordinate_transform_map2pixel(i, j)
+        # if self.step != 0:
+        self.draw(i, j)  # AI
+        self.x, self.y = self.coordinate_transform_map2pixel(i, j)
         self.ai_down = True
         self.update()
 
@@ -141,11 +152,8 @@ class GoBang(QWidget):
 
         if self.piece_now == BLACK:
             self.pieces[self.step].setPixmap(self.black)  # 放置黑色棋子
-            #if abandonrule(i,j):
-
             self.piece_now = WHITE
             self.chessboard.draw_xy(i, j, BLACK)
-
         else:
             self.pieces[self.step].setPixmap(self.white)  # 放置白色棋子
             self.piece_now = BLACK
@@ -161,7 +169,7 @@ class GoBang(QWidget):
             self.gameover(winner)
 
     def drawLines(self, qp):  # 指示AI当前下的棋子
-        if self.step != 0:
+        # if self.step != 0:
             pen = QtGui.QPen(QtCore.Qt.black, 2, QtCore.Qt.SolidLine)
             qp.setPen(pen)
             qp.drawLine(self.x - 5, self.y - 5, self.x + 3, self.y + 3)
