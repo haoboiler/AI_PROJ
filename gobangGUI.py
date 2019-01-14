@@ -96,7 +96,7 @@ class GoBang(QWidget):
 
         self.mouse_point = LaBel(self)  # 将鼠标图片改为棋子
         self.mouse_point.setScaledContents(True)
-        self.mouse_point.setPixmap(self.black)  # 加载黑棋
+        # self.mouse_point.setPixmap(self.black)  # 加载黑棋
         self.mouse_point.setGeometry(270, 270, PIECE, PIECE)
         self.pieces = [LaBel(self) for i in range(225)]  # 新建棋子标签，准备在棋盘上绘制棋子
         for piece in self.pieces:
@@ -114,7 +114,7 @@ class GoBang(QWidget):
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         
         if self.my_turn == QMessageBox.No:
-            self.mouse_point.setPixmap(self.white)  # 加载白棋
+            # self.mouse_point.setPixmap(self.white)  # 加载白棋
             self.ai_down = False
             board = self.chessboard.board()
             self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
@@ -127,9 +127,9 @@ class GoBang(QWidget):
         self.drawLines(qp)
         qp.end()
 
-    def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
-        # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
-        self.mouse_point.move(e.x() - 16, e.y() - 16)
+    # def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
+    #     # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
+    #     self.mouse_point.move(e.x() - 16, e.y() - 16)
 
     def mousePressEvent(self, e):  # 玩家下棋
         if e.button() == Qt.LeftButton and self.ai_down == True:
@@ -211,12 +211,22 @@ class GoBang(QWidget):
 
         if reply == QMessageBox.Yes:  # 复位
             self.piece_now = BLACK
-            self.mouse_point.setPixmap(self.black)
+            # self.mouse_point.setPixmap(self.black)
             self.step = 0
             for piece in self.pieces:
                 piece.clear()
             self.chessboard.reset()
             self.update()
+            
+            self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if self.my_turn == QMessageBox.No:
+                # self.mouse_point.setPixmap(self.white)  # 加载白棋
+                self.ai_down = False
+                board = self.chessboard.board()
+                self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
+                self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
+                self.AI.start()  # run
         else:
             self.close()
 
