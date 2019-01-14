@@ -92,7 +92,8 @@ class GoBang(QWidget):
 
         self.mouse_point = LaBel(self)  # 将鼠标图片改为棋子
         self.mouse_point.setScaledContents(True)
-        self.mouse_point.setPixmap(self.black)  # 加载黑棋
+        #gkh: delete the black chess move with mouse
+        #self.mouse_point.setPixmap(self.black)  # 加载黑棋
         self.mouse_point.setGeometry(270, 270, PIECE, PIECE)
         self.pieces = [LaBel(self) for i in range(225)]  # 新建棋子标签，准备在棋盘上绘制棋子
         for piece in self.pieces:
@@ -123,9 +124,10 @@ class GoBang(QWidget):
         self.drawLines(qp)
         qp.end()
 
-    def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
+    #gkh: delete the black chess move with mouse
+    #def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
         # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
-        self.mouse_point.move(e.x() - 16, e.y() - 16)
+        #self.mouse_point.move(e.x() - 16, e.y() - 16)
 
     def mousePressEvent(self, e):  # 玩家下棋
         if e.button() == Qt.LeftButton and self.ai_down == True:
