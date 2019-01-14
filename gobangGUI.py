@@ -217,7 +217,7 @@ class GoBang(QWidget):
                 piece.clear()
             self.chessboard.reset()
             self.update()
-            
+            # ycn's code, 复盘重选先后手
             self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if self.my_turn == QMessageBox.No:
