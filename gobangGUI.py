@@ -42,7 +42,7 @@ class AI(QtCore.QThread):
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
         score, x, y = self.ai.search(self.turn, 2) 
-        self.finishSignal.emit(0, y)
+        self.finishSignal.emit(x, y)
 
 
 # ----------------------------------------------------------------------
