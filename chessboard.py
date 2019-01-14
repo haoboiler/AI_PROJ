@@ -63,7 +63,7 @@ class ChessBoard(object):
         return EMPTY
 
     #gkh :implement for double three check
-    def check_connect(self, x, y, connect_number, newdirection = None):
+    def check_connect(self, x, y, connect_number, newdirection = None, live = None):
         state = self.get_xy_on_logic_state(x, y)
         for directions in self.__dir:
             count = 1
@@ -71,9 +71,20 @@ class ChessBoard(object):
                 continue
             for direction in directions:
                 point = (x,y)
+                redirection = (list(direction)[0] * -1, list(direction)[1] * -1)
+                if live != None:
+                    if self.get_xy_on_direction_state(point, redirection) != 0:
+                        continue
                 while True:
-                    if count == connect_number:                        
-                        return point, direction
+                    if count == connect_number:
+                        #if need not check the chess live
+                        if live == None:                        
+                            return point, direction
+                        else:
+                            if self.get_xy_on_direction_state(point, direction) != 0:
+                                break
+                            else:
+                                return point, direction
                     elif self.get_xy_on_direction_state(point, direction) == state:
                         count += 1
                         point = self.get_next_xy(point, direction)
@@ -85,14 +96,33 @@ class ChessBoard(object):
     #gkh implement double three check
     def breakrule(self, x, y):
         state = self.get_xy_on_logic_state(x, y)
-        newpoint, newdirection = self.check_connect(x, y, 3)
-        #print("check value")
-        #print(newpoint,newdirection)
+        #gkh : check the double three, but does not implement the live function
+        newpoint, newdirection = self.check_connect(x, y, 3, live = 2)
         if newpoint != 0:
-            newpoint1, newdirection1 = self.check_connect(newpoint[0], newpoint[1], 3, newdirection)
-            newpoint2, newdirection2 = self.check_connect(x, y, 3, newdirection)
+            newpoint1, newdirection1 = self.check_connect(newpoint[0], newpoint[1], 3, newdirection, live = 2)
+            newpoint2, newdirection2 = self.check_connect(x, y, 3, newdirection, live = 2)
             if newpoint1 != 0 or newpoint2 != 0:
                 return True
+        #check the double four
+        newpoint, newdirection = self.check_connect(x, y, 4)
+        if newpoint != 0:
+            newpoint1, newdirection1 = self.check_connect(newpoint[0], newpoint[1], 4, newdirection)
+            newpoint2, newdirection2 = self.check_connect(x, y, 4, newdirection)
+            if newpoint1 != 0 or newpoint2 != 0:
+                return True
+        #check long
+        newpoint, newdirection = self.check_connect(x, y, 6)
+        if newpoint != 0:
+            return True
+        newpoint, newdirection = self.check_connect(x, y, 7)
+        if newpoint != 0:
+            return True
+        newpoint, newdirection = self.check_connect(x, y, 8)
+        if newpoint != 0:
+            return True
+        newpoint, newdirection = self.check_connect(x, y, 9)
+        if newpoint != 0:
+            return True             
         return False
 
 

@@ -42,7 +42,7 @@ class AI(QtCore.QThread):
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
         score, x, y = self.ai.search(self.turn, 2) 
-        self.finishSignal.emit(x, y)
+        self.finishSignal.emit(0, y)
 
 
 # ----------------------------------------------------------------------
@@ -176,16 +176,17 @@ class GoBang(QWidget):
         self.step += 1  # 步数+1
 
         #gkh: check if there is rule breaker
+        rulerbreak = False
         if self.piece_now == WHITE:
             rulerbreak = self.chessboard.breakrule(i, j)
             if (rulerbreak == True):
                 self.gameover(2)
-
+        if rulerbreak == False:
         #gkh :modify end at this place
-        winner = self.chessboard.anyone_win(i, j)  # 判断输赢
-        if winner != EMPTY:
-            self.mouse_point.clear()
-            self.gameover(winner)
+            winner = self.chessboard.anyone_win(i, j)  # 判断输赢
+            if winner != EMPTY:
+                self.mouse_point.clear()
+                self.gameover(winner)
 
     def drawLines(self, qp):  # 指示AI当前下的棋子
         # if self.step != 0:
