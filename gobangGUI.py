@@ -29,16 +29,20 @@ class AI(QtCore.QThread):
     finishSignal = QtCore.pyqtSignal(int, int)
 
     # 构造函数里增加形参
-    def __init__(self, board, parent=None):
+    def __init__(self, board, turn ,parent=None):
         super(AI, self).__init__(parent)
         self.board = board
+        self.turn = turn
 
     # 重写 run() 函数
     def run(self):
         self.ai = searcher()
         self.ai.board = self.board
-        score, x, y = self.ai.search(2, 2)
-        print ("x,y: ",x,y)
+        # turn, depth
+        # turn = 2 玩家先手，AI后手
+        # turn = 1 AI先手，玩家后手
+        score, x, y = self.ai.search(self.turn, 2)
+        
         self.finishSignal.emit(x, y)
 
 
@@ -113,7 +117,7 @@ class GoBang(QWidget):
             self.mouse_point.setPixmap(self.white)  # 加载白棋
             self.ai_down = False
             board = self.chessboard.board()
-            self.AI = AI(board)  # 新建线程对象，传入棋盘参数
+            self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
             self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
             self.AI.start()  # run
 
@@ -134,11 +138,17 @@ class GoBang(QWidget):
             if not i is None and not j is None:  # 棋子落在棋盘上，排除边缘
                 if self.chessboard.get_xy_on_logic_state(i, j) == EMPTY:  # 棋子落在空白处
                     self.draw(i, j)
+
                     self.ai_down = False
                     board = self.chessboard.board()
-                    self.AI = AI(board)  # 新建线程对象，传入棋盘参数
+                    if self.piece_now == WHITE: # 玩家先手黑棋 已下完
+                        self.AI = AI(board,2)  # 新建线程对象，传入棋盘参数
+                    else:
+                        self.AI = AI(board,1) # 玩家后手，AI先手
                     self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
                     self.AI.start()  # run
+
+
 
     def AI_draw(self, i, j):
         # if self.step != 0:
@@ -192,11 +202,11 @@ class GoBang(QWidget):
     def gameover(self, winner):
         if winner == BLACK:
             self.sound_win.play()
-            reply = QMessageBox.question(self, 'You Win!', 'Continue?',
+            reply = QMessageBox.question(self, 'Black Win!', 'Continue?',
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         else:
             self.sound_defeated.play()
-            reply = QMessageBox.question(self, 'You Lost!', 'Continue?',
+            reply = QMessageBox.question(self, 'Black Lost!', 'Continue?',
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
         if reply == QMessageBox.Yes:  # 复位
