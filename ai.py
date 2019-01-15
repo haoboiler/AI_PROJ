@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-
-
+####gkh: two weight lists
+blackweight_list = []
+whiteweight_list = []
+last_value = 0
+#######################
 # evaluation: 棋盘评估类，给当前棋盘打分用
 # ----------------------------------------------------------------------
 class evaluation(object):
@@ -173,6 +176,7 @@ class evaluation(object):
                 wvalue += count[WHITE][STWO]
             if count[BLACK][STWO]:
                 bvalue += count[BLACK][STWO]
+
         else:
             if count[BLACK][FOUR] > 0: return 9990
             if count[BLACK][SFOUR] > 0: return 9980
@@ -531,3 +535,5 @@ class searcher(object):
             score = self.__search(turn, 1, -0x7fffffff, 0x7fffffff)
         row, col = self.bestmove
         return score, row, col
+
+        

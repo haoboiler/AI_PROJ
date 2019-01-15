@@ -3,7 +3,9 @@
 
 
 from chessboard import ChessBoard
-from ai import searcher
+#gkh: get global value from ai#######
+from ai import searcher, blackweight_list, whiteweight_list ,last_value
+
 
 WIDTH = 540
 HEIGHT = 540
@@ -13,10 +15,7 @@ PIECE = 34
 EMPTY = 0
 BLACK = 1
 WHITE = 2
-####gkh: two weight lists
-blackweight_list = []
-whiteweight_list = []
-#######################
+
 import sys
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMessageBox
@@ -47,6 +46,8 @@ class AI(QtCore.QThread):
         # turn = 1 AI先手，玩家后手
         score, x, y = self.ai.search(self.turn, 2) 
         self.finishSignal.emit(x, y)
+
+    #def learning_weight(learning_rate, difference):
 
 
 # ----------------------------------------------------------------------
@@ -236,7 +237,7 @@ class GoBang(QWidget):
         ######gkh: game over update 
         f = open('./data/blackweight', 'w')
         for i in range(len(blackweight_list)):
-          f.write(str(blackweight_list) + '\n')
+          f.write(str(blackweight_list[i]) + '\n')
         f.close()
         f = open('./data/whiteweight', 'w')
         for i in range(len(whiteweight_list)):
