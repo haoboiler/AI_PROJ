@@ -37,7 +37,6 @@ class evaluation(object):
             data = [0 for i in range(20)]
             self.count.append(data)
         self.reset()
-
         # 复位数据
 
     def reset(self):
@@ -125,12 +124,16 @@ class evaluation(object):
                 return -9999
             if count[BLACK][FIVE]:
                 return 9999
+            # gkh : double three double four 
             if count[BLACK][DTHREE]:
+                return -9999
+            if count[BLACK][SFOUR] >= 2:
                 return -9999
 
                 # 如果存在两个冲四，则相当于有一个活四
         if count[WHITE][SFOUR] >= 2:
             count[WHITE][FOUR] += 1
+        
         if count[BLACK][SFOUR] >= 2:
             count[BLACK][FOUR] += 1
 

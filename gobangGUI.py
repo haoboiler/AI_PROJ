@@ -13,14 +13,17 @@ PIECE = 34
 EMPTY = 0
 BLACK = 1
 WHITE = 2
-
+####gkh: two weight lists
+blackweight_list = []
+whiteweight_list = []
+#######################
 import sys
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QIcon, QPalette, QPainter
 from PyQt5.QtMultimedia import QSound
-
+import csv, os
 
 # ----------------------------------------------------------------------
 # 定义线程类执行AI的算法
@@ -33,6 +36,7 @@ class AI(QtCore.QThread):
         super(AI, self).__init__(parent)
         self.board = board
         self.turn = turn
+
 
     # 重写 run() 函数
     def run(self):
@@ -101,7 +105,22 @@ class GoBang(QWidget):
         for piece in self.pieces:
             piece.setVisible(True)  # 图片可视
             piece.setScaledContents(True)  # 图片大小根据标签大小可变
-
+        #gkh for weight reading##########
+        f = open('./data/blackweight', 'r')
+        line = f.readline()
+        while line:
+          blackweight_list.append(int(line[0:-1]))
+          line = f.readline()
+        f.close()
+        f = open('./data/whiteweight', 'r')
+        line = f.readline()
+        while line:
+          whiteweight_list.append(int(line[0:-1]))
+          line = f.readline()
+        f.close()
+        print(blackweight_list, whiteweight_list)
+        ###############
+        #print(weight_list)
         self.mouse_point.raise_()  # 鼠标始终在最上层
         self.ai_down = True  # AI已下棋，主要是为了加锁，当值是False的时候说明AI正在思考，这时候玩家鼠标点击失效，要忽略掉 mousePressEvent
 
@@ -114,8 +133,12 @@ class GoBang(QWidget):
         
         if self.my_turn == QMessageBox.No:
             # self.mouse_point.setPixmap(self.white)  # 加载白棋
+
+
+            #################
             self.ai_down = False
             board = self.chessboard.board()
+            ##########gkh : AI get the list
             self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
             self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
             self.AI.start()  # run
@@ -210,6 +233,16 @@ class GoBang(QWidget):
             return i, j
 
     def gameover(self, winner):
+        ######gkh: game over update 
+        f = open('./data/blackweight', 'w')
+        for i in range(len(blackweight_list)):
+          f.write(str(blackweight_list) + '\n')
+        f.close()
+        f = open('./data/whiteweight', 'w')
+        for i in range(len(whiteweight_list)):
+          f.write(str(whiteweight_list[i]) + '\n')
+        f.close()
+        ###################
         if winner == BLACK:
             self.sound_win.play()
             reply = QMessageBox.question(self, 'Black Win!', 'Continue?',
