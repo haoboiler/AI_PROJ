@@ -4,6 +4,9 @@
 blackweight_list = []
 whiteweight_list = []
 last_value = 0
+now_value = 0
+black_last_count = []
+white_last_count = []
 #######################
 # evaluation: 棋盘评估类，给当前棋盘打分用
 # ----------------------------------------------------------------------

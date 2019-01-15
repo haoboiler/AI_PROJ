@@ -4,7 +4,7 @@
 
 from chessboard import ChessBoard
 #gkh: get global value from ai#######
-from ai import searcher, blackweight_list, whiteweight_list ,last_value
+from ai import searcher, blackweight_list, whiteweight_list ,last_value, now_value,black_last_count, white_last_count
 
 
 WIDTH = 540
@@ -44,11 +44,28 @@ class AI(QtCore.QThread):
         # turn, depth
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
-        score, x, y = self.ai.search(self.turn, 2) 
+        score, x, y = self.ai.search(self.turn, 2)
+        ##########gkh:learning weight function
+        difference = 0
+        if last_value != 0:
+            difference = self.get_difference(0.9)
+        if difference != 0:
+            self.learning_weight(0.1, difference)
+        #############
         self.finishSignal.emit(x, y)
+    
+    ####gkh: get difference function
+    def get_difference(discount):
+        return now_value * discount - last_value
 
-    #def learning_weight(learning_rate, difference):
-
+    ####gkh: learning weight function
+    def learning_weight(learning_rate, difference):
+        if turn == 1:
+            for i in range(len(blackweight_list)):
+                blackweight_list[i] += learning_rate * difference * black_last_count[i]
+        if turn == 2:
+            for i in range(len(whiteweight_list)):
+                whiteweight_list[i] += learning_rate * difference * white_last_count[i]
 
 # ----------------------------------------------------------------------
 # 重新定义Label类
