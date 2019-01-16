@@ -4,12 +4,9 @@
 
 from chessboard import ChessBoard
 #gkh: get global value from ai#######
-from ai import searcher, blackweight_list, whiteweight_list , black_last_count, white_last_count
-import copy
-learning_rate = 0.005
-last_value = 0
-now_value =  0
-discount = 0.9
+from ai import searcher, blackweight_list, whiteweight_list ,last_value, now_value,black_last_count, white_last_count
+
+
 WIDTH = 540
 HEIGHT = 540
 MARGIN = 22
@@ -20,32 +17,13 @@ BLACK = 1
 WHITE = 2
 
 import sys
+
+import csv, os
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMessageBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QIcon, QPalette, QPainter
 from PyQt5.QtMultimedia import QSound
-import csv, os
-####gkh: get difference function
-def get_difference(discount):
-    return now_value * discount + 1 - last_value
-
-####gkh: learning weight function
-def learning_weight(learning_rate, difference, turn):
-    global whiteweight_list, white_last_count, blackweight_list, black_last_count
-    if turn == 1:
-        for i in range(len(blackweight_list)):
-            if i < 10:
-                blackweight_list[i] += learning_rate * difference * black_last_count[1][i]
-            else:
-                blackweight_list[i] += learning_rate * difference * black_last_count[2][i-10]
-    if turn == 2:
-        for i in range(len(whiteweight_list)):
-            if i < 10:
-                whiteweight_list[i] += learning_rate * difference * white_last_count[2][i]
-            else:
-                whiteweight_list[i] += learning_rate * difference * white_last_count[1][i-10]
-    print(whiteweight_list)
 # ----------------------------------------------------------------------
 # 定义线程类执行AI的算法
 # ----------------------------------------------------------------------
@@ -66,53 +44,28 @@ class AI(QtCore.QThread):
         # turn, depth
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
-        score, x, y = self.ai.search(self.turn, 2, BLACKAI = 0)
-        # huzy added
-        self.ai_tmp = searcher()
-        self.ai_tmp.board = copy.deepcopy(self.board)
-        self.ai_tmp.board[x][y] = self.turn
-        #########gkh: 
-        global now_value, last_value
-        if now_value != 0:
-            last_value = now_value
-        now_value = self.ai_tmp.evaluator.evaluate(self.ai_tmp.board, self.turn, BLACKAI = 0)
-
-        # huzy added end 
+        score, x, y = self.ai.search(self.turn, 2)
         ##########gkh:learning weight function
         difference = 0
         if last_value != 0:
-            difference = get_difference(discount)
-            print('difference is', difference)
-        if difference != 0:
-            learning_weight(learning_rate, difference, self.turn)
-        
-        self.ai_tmp.evaluator.count_evaluate(self.ai_tmp.board, self.turn)
-        ################
-        self.finishSignal.emit(x, y)
-
-# ----------------------------------------------------------------------
-# 定义线程类执行AI的算法
-# ----------------------------------------------------------------------
-class BLACKAI(QtCore.QThread):
-    finishSignal = QtCore.pyqtSignal(int, int)
-
-    # 构造函数里增加形参
-    def __init__(self, board, turn ,parent=None):
-        super(BLACKAI, self).__init__(parent)
-        self.board = board
-        self.turn = turn
-
-
-    # 重写 run() 函数
-    def run(self):
-        self.ai = searcher()
-        self.ai.board = self.board
-        # turn, depth
-        # turn = 2 玩家先手，AI后手
-        # turn = 1 AI先手，玩家后手
-        score, x, y = self.ai.search(self.turn, 2, BLACKAI = 1)
-        self.finishSignal.emit(x, y)
+            difference = self.get_difference(0.9)
+        #if difference != 0:
+            #self.learning_weight(0.1, difference)
+        #############
+        self.finishSignal.emit(0, y)
     
+    ####gkh: get difference function
+    def get_difference(discount):
+        return now_value * discount - last_value
+
+    ####gkh: learning weight function
+    def learning_weight(learning_rate, difference):
+        if turn == 1:
+            for i in range(len(blackweight_list)):
+                blackweight_list[i] += learning_rate * difference * black_last_count[i]
+        if turn == 2:
+            for i in range(len(whiteweight_list)):
+                whiteweight_list[i] += learning_rate * difference * white_last_count[i]
 
 # ----------------------------------------------------------------------
 # 重新定义Label类
@@ -174,13 +127,13 @@ class GoBang(QWidget):
         f = open('./data/blackweight', 'r')
         line = f.readline()
         while line:
-          blackweight_list.append(float(line[0:-1]))
+          blackweight_list.append(int(line[0:-1]))
           line = f.readline()
         f.close()
         f = open('./data/whiteweight', 'r')
         line = f.readline()
         while line:
-          whiteweight_list.append(float(line[0:-1]))
+          whiteweight_list.append(int(line[0:-1]))
           line = f.readline()
         f.close()
         print(blackweight_list, whiteweight_list)
@@ -191,119 +144,77 @@ class GoBang(QWidget):
 
         self.setMouseTracking(True)
         self.show()
+
         # 玩家选择是否先手
-        self.two_ai_train = QMessageBox.question(self, 'Let\'s play a game!','是否使用ai互相训练呢？',
+        self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        #gkh : realize two ai train
-        if self.two_ai_train == QMessageBox.Yes:
-            self.AItrain()
-        ##########
-        else:
-            # 玩家选择是否先手
-            self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
-                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            
-            if self.my_turn == QMessageBox.No:
-                # self.mouse_point.setPixmap(self.white)  # 加载白棋
+        
+        if self.my_turn == QMessageBox.No:
+            # self.mouse_point.setPixmap(self.white)  # 加载白棋
 
 
-                #################
-                self.ai_down = False
-                board = self.chessboard.board()
-                ##########gkh : AI get the list
-                self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
-                print('AI 0')
-                self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
-                self.AI.start()  # run
+            #################
+            self.ai_down = False
+            board = self.chessboard.board()
+            ##########gkh : AI get the list
+            self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
+            self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
+            self.AI.start()  # run
 
     def paintEvent(self, event):  # 画出指示箭头
         qp = QPainter()
         qp.begin(self)
         self.drawLines(qp)
         qp.end()
-    
-    #gkh: AI train
-    def AItrain(self):
-            print('ai start')
-        #while True:
-            board = self.chessboard.board()
-            self.piece_now = BLACK
-            self.black_ai_down = False
-            self.BLACKAI = BLACKAI(board, 1)
-            self.BLACKAI.finishSignal.connect(self.BLACKAI_draw)
-            self.BLACKAI.start()
-            self.BLACKAI.wait()
-            print('end black')
-    def whiteAItrain(self):
-            self.piece_now = WHITE
-            print('start white')
-            board = self.chessboard.board()
-            self.WHITEAI = AI(board, 2)
-            self.WHITEAI.finishSignal.connect(self.WHITEAI_draw)
-            self.WHITEAI.start()
-            self.WHITEAI.wait()
 
-    #############
     # def mouseMoveEvent(self, e):  # 黑色棋子随鼠标移动
     #     # self.lb1.setText(str(e.x()) + ' ' + str(e.y()))
     #     self.mouse_point.move(e.x() - 16, e.y() - 16)
 
     def mousePressEvent(self, e):  # 玩家下棋
         if e.button() == Qt.LeftButton and self.ai_down == True:
-            print("press")
             x, y = e.x(), e.y()  # 鼠标坐标
             i, j = self.coordinate_transform_pixel2map(x, y)  # 对应棋盘坐标
-            if not i is None and not j is None:  # 棋子落在棋盘上，排除边缘
+            #######gkh change for banned rule
+            rulebreaker = False
+            if self.piece_now == BLACK: # play use black chess
+                #print('is black')
+                rulebreaker = self.chessboard.breakruleDT(i, j)
+                if rulebreaker:
+                    reply = QMessageBox.question(self, 'BREAKRULE!', 'BLACK DOUBLE-THREE BANNED!',
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                rulebreakerDF = self.chessboard.breakruleDF(i,j)
+                if rulebreakerDF:
+                    reply = QMessageBox.question(self, 'BREAKRULE!', 'BLACK DOUBLE-FOUR BANNED!',
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                rulebreakerLC = self.chessboard.breakruleLC(i, j)
+                if rulebreakerLC:
+                    reply = QMessageBox.question(self, 'BREAKRULE!', 'BLACK LONG-CONNECT BANNED!',
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            ###################    
+            if not i is None and not j is None and not rulebreaker and not rulebreakerLC and not rulebreakerDF:  # 棋子落在棋盘上，排除边缘
                 if self.chessboard.get_xy_on_logic_state(i, j) == EMPTY:  # 棋子落在空白处
-                    endgame = self.draw(i, j)
-                    if endgame == False:
+                    notendgame = self.draw(i, j)
+                    if not notendgame:
                         return
                     self.ai_down = False
                     board = self.chessboard.board()
-                    # if self.piece_now == WHITE: # 玩家先手黑棋 已下完
-                    #     self.AI = AI(board,2)  # 新建线程对象，传入棋盘参数
-                    # else:
-                    #     self.AI = AI(board,1) # 玩家后手，AI先手
-                    #     print('AI , 3')
-                    ########gkh change
-                    if self.my_turn == QMessageBox.No:
-                        self.AI = AI(board, 1)
-                        print('AI, 123')
+                    if self.piece_now == WHITE: # 玩家先手黑棋 已下完
+                        self.AI = AI(board,2)  # 新建线程对象，传入棋盘参数
                     else:
-                        self.AI = AI(board,2)
-                    ##############
+                        self.AI = AI(board,1) # 玩家后手，AI先手
                     self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
                     self.AI.start()  # run
 
-    ####gkh ai train
-    def BLACKAI_draw(self, i, j):
-        # if self.step != 0:
-        notendgame = self.draw(i, j)  # AI
-        if notendgame == False:
-            return
-        self.x, self.y = self.coordinate_transform_map2pixel(i, j)
-        self.update()   
-        self.whiteAItrain()
-    
-    def WHITEAI_draw(self, i, j):
-        # if self.step != 0:
-        notendgame = self.draw(i, j)  # AI
-        if notendgame == False:
-            return
-        self.x, self.y = self.coordinate_transform_map2pixel(i, j)
-        self.update()   
-        self.AItrain()
+
 
     def AI_draw(self, i, j):
         # if self.step != 0:
-        notendgame = self.draw(i, j)  # AI
-
+        self.draw(i, j)  # AI
         self.x, self.y = self.coordinate_transform_map2pixel(i, j)
         self.ai_down = True
         self.update()
 
-        return notendgame
-    #######################
     def draw(self, i, j):
         x, y = self.coordinate_transform_map2pixel(i, j)
 
@@ -324,18 +235,12 @@ class GoBang(QWidget):
         self.step += 1  # 步数+1
 
         #gkh: check if there is rule breaker
-        rulerbreak = False
-        # if self.piece_now == WHITE:
-        #     rulerbreak = self.chessboard.breakrule(i, j)
-        #     if (rulerbreak == True):
-        #         self.gameover(2)
-        if rulerbreak == False:
         #gkh :modify end at this place
-            winner = self.chessboard.anyone_win(i, j)  # 判断输赢
-            if winner != EMPTY:
-                self.mouse_point.clear()
-                self.gameover(winner)
-                return False
+        winner = self.chessboard.anyone_win(i, j)  # 判断输赢
+        if winner != EMPTY:
+            self.mouse_point.clear()
+            self.gameover(winner)
+            return False
         return True
 
     def drawLines(self, qp):  # 指示AI当前下的棋子
@@ -360,7 +265,6 @@ class GoBang(QWidget):
             return i, j
 
     def gameover(self, winner):
-        global now_value, last_value
         ######gkh: game over update 
         f = open('./data/blackweight', 'w')
         for i in range(len(blackweight_list)):
@@ -372,52 +276,34 @@ class GoBang(QWidget):
         f.close()
         ###################
         if winner == BLACK:
-            # self.sound_win.play()
-            # reply = QMessageBox.question(self, 'Black Win!', 'Continue?',
-            #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            #######gkh wei xiabi xunlian jia
-            difference = get_difference(discount)
-            now_value = -50
-            if difference != 0:
-                learning_weight(learning_rate, difference, 2)
+            self.sound_win.play()
+            reply = QMessageBox.question(self, 'Black Win!', 'Continue?',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         else:
-            # self.sound_defeated.play()
-            # reply = QMessageBox.question(self, 'Black Lost!', 'Continue?',
-            #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            difference = get_difference(discount)
-            now_value = 50
-            if difference != 0:
-                learning_weight(learning_rate, difference, 2)
-        # if reply == QMessageBox.Yes:  # 复位
-        self.piece_now = BLACK
-        ###########gkh init
+            self.sound_defeated.play()
+            reply = QMessageBox.question(self, 'Black Lost!', 'Continue?',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
-        now_value = 0
-        last_value = 0
-        # self.mouse_point.setPixmap(self.black)
-        self.step = 0
-        for piece in self.pieces:
-            piece.clear()
-        self.chessboard.reset()
-        self.update()
-        self.ai_down = True
-        self.BLACKAI.quit()
-        self.WHITEAI.quit()
-        self.AItrain()
+        if reply == QMessageBox.Yes:  # 复位
+            self.piece_now = BLACK
+            # self.mouse_point.setPixmap(self.black)
+            self.step = 0
+            for piece in self.pieces:
+                piece.clear()
+            self.chessboard.reset()
+            self.update()
             # ycn's code, 复盘重选先后手
-            # self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
-            #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            # if self.my_turn == QMessageBox.No:
-            #     # self.mouse_point.setPixmap(self.white)  # 加载白棋
-            #     self.ai_down = False
-            #     board = self.chessboard.board()
-            #     self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
-            #     print('AI 1')
-            #     self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
-            #     self.AI.start()  # run
-
-        # else:
-        #     self.close()
+            self.my_turn = QMessageBox.question(self, 'Let\'s play a game!','是否选择先手？',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if self.my_turn == QMessageBox.No:
+                # self.mouse_point.setPixmap(self.white)  # 加载白棋
+                self.ai_down = False
+                board = self.chessboard.board()
+                self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
+                self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
+                self.AI.start()  # run
+        else:
+            self.close()
 
 
 if __name__ == '__main__':

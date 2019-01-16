@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 ####gkh: two weight lists
-import copy
-blackweight_list = []
+blackweight_list = [] 
 whiteweight_list = []
-
-black_last_count = [[],[],[]]
-white_last_count = [[],[],[]]
+last_value = 0
+now_value = 0
+black_last_count = []
+white_last_count = []
 #######################
 # evaluation: 棋盘评估类，给当前棋盘打分用
 # ----------------------------------------------------------------------
@@ -63,9 +63,9 @@ class evaluation(object):
 
         # 四个方向（水平，垂直，左斜，右斜）分析评估棋盘，再根据结果打分
 
-    def evaluate(self, board, turn, BLACKAI):
+    def evaluate(self, board, turn):
         #print(turn)
-        score = self.__evaluate(board, turn, BLACKAI)
+        score = self.__evaluate(board, turn)
         count = self.count
         if score < -9000:
             stone = turn == 1 and 2 or 1
@@ -78,44 +78,10 @@ class evaluation(object):
                 if count[turn][i] > 0:
                     score += i
         return score
-# huzy added
-    def count_evaluate(self, board, turn):
-        #print(turn)
-        #print('count_evaluate',turn)
-        global black_last_count, white_last_count
-        score = self.__evaluate(board, turn)
-        count = self.count
 
-        ##########hzy:change count
-        newcount = [[],[],[]]
-        newcount[0] = copy.deepcopy(count[0])
-        newcount[1] = copy.deepcopy(count[1])
-        newcount[2] = copy.deepcopy(count[2])
-        if turn == 1:
-        	black_last_count[0] = copy.deepcopy(newcount[0])
-        	black_last_count[1] = copy.deepcopy(newcount[1])
-        	black_last_count[2] = copy.deepcopy(newcount[2])
-        else:
-        	white_last_count[0] = copy.deepcopy(newcount[0])
-        	white_last_count[1] = copy.deepcopy(newcount[1])
-        	white_last_count[2] = copy.deepcopy(newcount[2])
-        	#print(white_last_count)
-        ##########
-        # if score < -9000:
-        #     stone = turn == 1 and 2 or 1
-        #     for i in range(20):
-        #         if count[stone][i] > 0:
-        #             score -= i
-        # elif score > 9000:
-        #     stone = turn == 1 and 2 or 1
-        #     for i in range(20):
-        #         if count[turn][i] > 0:
-        #             score += i
-        return score
-# huzy added end
         # 四个方向（水平，垂直，左斜，右斜）分析评估棋盘，再根据结果打分
 
-    def __evaluate(self, board, turn, BLACKAI = 0):
+    def __evaluate(self, board, turn):
         record, count = self.record, self.count
         TODO, ANALYSED = self.TODO, self.ANALYSED
         self.reset()
@@ -138,9 +104,6 @@ class evaluation(object):
         THREE, TWO = self.THREE, self.TWO
         SFOUR, STHREE, STWO = self.SFOUR, self.STHREE, self.STWO
         DTHREE = self.DTHREE #double three
-        # huzy 
-        FOURT = self.FOURT
-        # huzy end
         check = {}
 
         # 分别对白棋黑棋计算：FIVE, FOUR, THREE, TWO等出现的次数
@@ -168,41 +131,22 @@ class evaluation(object):
             if count[BLACK][FIVE]:
                 return 9999
             # gkh : double three double four 
-            # if count[BLACK][DTHREE]:
-            #     return -9999
-            # if count[BLACK][SFOUR] >= 2:
-            #     return -9999
+            if count[BLACK][DTHREE]:
+                return -9999
+            if count[BLACK][SFOUR] >= 2:
+                return -9999
 
                 # 如果存在两个冲四，则相当于有一个活四
         if count[WHITE][SFOUR] >= 2:
             count[WHITE][FOUR] += 1
-
-
-        #  wzy  ######################################
-        if turn == WHITE and BLACKAI == 0:
-	        global whiteweight_list, blackweight_list
-	        if turn == WHITE:
-	        	weight = whiteweight_list
-	        else:
-	        	weight = blackweight_list
-	        FEATURES = [FIVE, FOUR, SFOUR, THREE, STHREE, TWO, STWO,FOURT]
-	        offset = 10 #从哪个位置开始是对手
-	        value = 0
-	        opponent = 0
-	        if turn == WHITE:
-	            opponent = BLACK
-	        else:
-	            opponent = WHITE
-	        for index in FEATURES:
-	            value += weight[index] * count[turn][index] \
-	                    + weight[index+offset] * count[opponent][index] 
-	       	return value
-        ##############################################
+        
+        if count[BLACK][SFOUR] >= 2:
+            count[BLACK][FOUR] += 1
 
 
             # 具体打分
         wvalue, bvalue, win = 0, 0, 0
-        if turn == WHITE and BLACKAI == 1:
+        if turn == WHITE:
             if count[WHITE][FOUR] > 0: return 9990
             if count[WHITE][SFOUR] > 0: return 9980
             if count[BLACK][FOUR] > 0: return -9970
@@ -537,15 +481,15 @@ class searcher(object):
 
         # 递归搜索：返回最佳分数
 
-    def __search(self, turn, depth, alpha, beta, BLACKAI):
+    def __search(self, turn, depth, alpha, beta):
 
         # 深度为零则评估棋盘并返回
         if depth <= 0:
-            score = self.evaluator.evaluate(self.board, turn, BLACKAI)
+            score = self.evaluator.evaluate(self.board, turn)
             return score
 
             # 如果游戏结束则立马返回
-        score = self.evaluator.evaluate(self.board, turn, BLACKAI)
+        score = self.evaluator.evaluate(self.board, turn)
         if abs(score) >= 9999 and depth < self.maxdepth:
             return score
 
@@ -563,7 +507,7 @@ class searcher(object):
             nturn = turn == 1 and 2 or 1
 
             # 深度优先搜索，返回评分，走的行和走的列
-            score = - self.__search(nturn, depth - 1, -beta, -alpha, BLACKAI)
+            score = - self.__search(nturn, depth - 1, -beta, -alpha)
 
             # 棋盘上清除当前走法
             self.board[row][col] = 0
@@ -585,13 +529,13 @@ class searcher(object):
 
         # 具体搜索：传入当前是该谁走(turn=1/2)，以及搜索深度(depth)
 
-    def search(self, turn, depth=3, BLACKAI = 0):
+    def search(self, turn, depth=3):
         self.maxdepth = depth
         self.bestmove = None
-        score = self.__search(turn, depth, -0x7fffffff, 0x7fffffff, BLACKAI)
+        score = self.__search(turn, depth, -0x7fffffff, 0x7fffffff)
         if abs(score) > 8000:
             self.maxdepth = depth
-            score = self.__search(turn, 1, -0x7fffffff, 0x7fffffff, BLACKAI)
+            score = self.__search(turn, 1, -0x7fffffff, 0x7fffffff)
         row, col = self.bestmove
         return score, row, col
 
