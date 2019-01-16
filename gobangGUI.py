@@ -6,7 +6,7 @@ from chessboard import ChessBoard
 #gkh: get global value from ai#######
 from ai import searcher, blackweight_list, whiteweight_list , black_last_count, white_last_count
 import copy
-learning_rate = 0.05
+learning_rate = 0.005
 last_value = 0
 now_value =  0
 discount = 0.9
@@ -66,7 +66,7 @@ class AI(QtCore.QThread):
         # turn, depth
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
-        score, x, y = self.ai.search(self.turn, 2)
+        score, x, y = self.ai.search(self.turn, 2, BLACKAI = 0)
         # huzy added
         self.ai_tmp = searcher()
         self.ai_tmp.board = copy.deepcopy(self.board)
@@ -75,7 +75,7 @@ class AI(QtCore.QThread):
         global now_value, last_value
         if now_value != 0:
             last_value = now_value
-        now_value = self.ai_tmp.evaluator.evaluate(self.ai_tmp.board, self.turn)
+        now_value = self.ai_tmp.evaluator.evaluate(self.ai_tmp.board, self.turn, BLACKAI = 0)
 
         # huzy added end 
         ##########gkh:learning weight function
@@ -110,7 +110,7 @@ class BLACKAI(QtCore.QThread):
         # turn, depth
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
-        score, x, y = self.ai.search(self.turn, 2)
+        score, x, y = self.ai.search(self.turn, 2, BLACKAI = 1)
         self.finishSignal.emit(x, y)
     
 

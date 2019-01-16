@@ -63,20 +63,20 @@ class evaluation(object):
 
         # 四个方向（水平，垂直，左斜，右斜）分析评估棋盘，再根据结果打分
 
-    def evaluate(self, board, turn):
+    def evaluate(self, board, turn, BLACKAI):
         #print(turn)
-        score = self.__evaluate(board, turn)
+        score = self.__evaluate(board, turn, BLACKAI)
         count = self.count
-        # if score < -9000:
-        #     stone = turn == 1 and 2 or 1
-        #     for i in range(20):
-        #         if count[stone][i] > 0:
-        #             score -= i
-        # elif score > 9000:
-        #     stone = turn == 1 and 2 or 1
-        #     for i in range(20):
-        #         if count[turn][i] > 0:
-        #             score += i
+        if score < -9000:
+            stone = turn == 1 and 2 or 1
+            for i in range(20):
+                if count[stone][i] > 0:
+                    score -= i
+        elif score > 9000:
+            stone = turn == 1 and 2 or 1
+            for i in range(20):
+                if count[turn][i] > 0:
+                    score += i
         return score
 # huzy added
     def count_evaluate(self, board, turn):
@@ -115,7 +115,7 @@ class evaluation(object):
 # huzy added end
         # 四个方向（水平，垂直，左斜，右斜）分析评估棋盘，再根据结果打分
 
-    def __evaluate(self, board, turn):
+    def __evaluate(self, board, turn, BLACKAI = 0):
         record, count = self.record, self.count
         TODO, ANALYSED = self.TODO, self.ANALYSED
         self.reset()
@@ -179,7 +179,7 @@ class evaluation(object):
 
 
         #  wzy  ######################################
-        if turn == WHITE:
+        if turn == WHITE and BLACKAI == 0:
 	        global whiteweight_list, blackweight_list
 	        if turn == WHITE:
 	        	weight = whiteweight_list
@@ -202,7 +202,7 @@ class evaluation(object):
 
             # 具体打分
         wvalue, bvalue, win = 0, 0, 0
-        if turn == WHITE:
+        if turn == WHITE and BLACKAI == 1:
             if count[WHITE][FOUR] > 0: return 9990
             if count[WHITE][SFOUR] > 0: return 9980
             if count[BLACK][FOUR] > 0: return -9970
@@ -537,15 +537,15 @@ class searcher(object):
 
         # 递归搜索：返回最佳分数
 
-    def __search(self, turn, depth, alpha, beta):
+    def __search(self, turn, depth, alpha, beta, BLACKAI):
 
         # 深度为零则评估棋盘并返回
         if depth <= 0:
-            score = self.evaluator.evaluate(self.board, turn)
+            score = self.evaluator.evaluate(self.board, turn, BLACKAI)
             return score
 
             # 如果游戏结束则立马返回
-        score = self.evaluator.evaluate(self.board, turn)
+        score = self.evaluator.evaluate(self.board, turn, BLACKAI)
         if abs(score) >= 9999 and depth < self.maxdepth:
             return score
 
@@ -563,7 +563,7 @@ class searcher(object):
             nturn = turn == 1 and 2 or 1
 
             # 深度优先搜索，返回评分，走的行和走的列
-            score = - self.__search(nturn, depth - 1, -beta, -alpha)
+            score = - self.__search(nturn, depth - 1, -beta, -alpha, BLACKAI)
 
             # 棋盘上清除当前走法
             self.board[row][col] = 0
@@ -585,13 +585,13 @@ class searcher(object):
 
         # 具体搜索：传入当前是该谁走(turn=1/2)，以及搜索深度(depth)
 
-    def search(self, turn, depth=3):
+    def search(self, turn, depth=3, BLACKAI = 0):
         self.maxdepth = depth
         self.bestmove = None
-        score = self.__search(turn, depth, -0x7fffffff, 0x7fffffff)
+        score = self.__search(turn, depth, -0x7fffffff, 0x7fffffff, BLACKAI)
         if abs(score) > 8000:
             self.maxdepth = depth
-            score = self.__search(turn, 1, -0x7fffffff, 0x7fffffff)
+            score = self.__search(turn, 1, -0x7fffffff, 0x7fffffff, BLACKAI)
         row, col = self.bestmove
         return score, row, col
 
