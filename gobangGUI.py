@@ -4,7 +4,7 @@
 
 from chessboard import ChessBoard
 #gkh: get global value from ai#######
-from ai import searcher, blackweight_list, whiteweight_list , black_last_count, white_last_count
+from ai import searcher, blackweight_list, whiteweight_list , black_last_count, white_last_count, last_count_for_reward
 import copy
 learning_rate = 0.05
 last_value = 0
@@ -18,6 +18,17 @@ PIECE = 34
 EMPTY = 0
 BLACK = 1
 WHITE = 2
+#hu added
+FIVE = 7
+FOUR = 6
+THREE = 5
+TWO = 4
+SFOUR = 3
+STHREE = 2
+STWO = 1
+learning_rate_counter = 0
+#hu end
+
 
 import sys
 from PyQt5 import QtCore, QtGui
@@ -28,8 +39,31 @@ from PyQt5.QtMultimedia import QSound
 import csv, os
 ####gkh: get difference function
 def get_difference(discount):
-    return now_value * discount + 1 - last_value
-
+    return now_value * discount - last_value
+#huzy added
+def get_reward(turn): 
+    global last_count_for_reward, white_last_count, black_last_count
+    reward = 0
+    remnant = []
+    for i in range(0, 3):
+        remnant.append([0 for i in range(20)])
+        for j in range(0, 20):
+            if turn == WHITE:
+                remnant[i][j] = last_count_for_reward[i][j] - white_last_count[i][j]
+            else:
+                remnant[i][j] = last_count_for_reward[i][j] - black_last_count[i][j]
+    if turn == WHITE:
+        reward_weight = [0, 10, 30, 70, 25, 80, 100, 200] # 0 冲二 冲三 冲四 活二 活三 活四 活五
+        for c in (FIVE, FOUR, SFOUR, THREE, STHREE, TWO, STWO):
+            reward += reward_weight[c] * remnant[WHITE][c]
+        punish_weight = [0, -20, -60, -140, -50, -160, -200, -400]
+        for c in (FIVE, FOUR, SFOUR, THREE, STHREE, TWO, STWO):
+            reward += punish_weight[c] * remnant[BLACK][c]
+    else: # not implemented yet
+        reward = None
+    # print("reward:", reward)
+    return reward
+#huzy added end
 ####gkh: learning weight function
 def learning_weight(learning_rate, difference, turn):
     global whiteweight_list, white_last_count, blackweight_list, black_last_count
@@ -45,7 +79,7 @@ def learning_weight(learning_rate, difference, turn):
                 whiteweight_list[i] += learning_rate * difference * white_last_count[2][i]
             else:
                 whiteweight_list[i] += learning_rate * difference * white_last_count[1][i-10]
-    print(whiteweight_list)
+    # print(whiteweight_list)
 # ----------------------------------------------------------------------
 # 定义线程类执行AI的算法
 # ----------------------------------------------------------------------
@@ -68,6 +102,7 @@ class AI(QtCore.QThread):
         # turn = 1 AI先手，玩家后手
         score, x, y = self.ai.search(self.turn, 2)
         # huzy added
+        self.ai.evaluator.evaluate(self.ai.board, self.turn) # 计算未落子count
         self.ai_tmp = searcher()
         self.ai_tmp.board = copy.deepcopy(self.board)
         self.ai_tmp.board[x][y] = self.turn
@@ -76,14 +111,12 @@ class AI(QtCore.QThread):
         if now_value != 0:
             last_value = now_value
         now_value = self.ai_tmp.evaluator.evaluate(self.ai_tmp.board, self.turn)
-
         # huzy added end 
         ##########gkh:learning weight function
         difference = 0
         if last_value != 0:
             difference = get_difference(discount)
-            print('difference is', difference)
-        if difference != 0:
+            difference += get_reward(self.turn) # should only pass self.turn = WHITE
             learning_weight(learning_rate, difference, self.turn)
         
         self.ai_tmp.evaluator.count_evaluate(self.ai_tmp.board, self.turn)
@@ -183,7 +216,7 @@ class GoBang(QWidget):
           whiteweight_list.append(float(line[0:-1]))
           line = f.readline()
         f.close()
-        print(blackweight_list, whiteweight_list)
+        # print(blackweight_list, whiteweight_list)
         ###############
         #print(weight_list)
         self.mouse_point.raise_()  # 鼠标始终在最上层
@@ -212,7 +245,7 @@ class GoBang(QWidget):
                 board = self.chessboard.board()
                 ##########gkh : AI get the list
                 self.AI = AI(board, 1)  # 新建线程对象，传入棋盘参数
-                print('AI 0')
+                # print('AI 0')
                 self.AI.finishSignal.connect(self.AI_draw)  # 结束线程，传出参数
                 self.AI.start()  # run
 
@@ -224,7 +257,7 @@ class GoBang(QWidget):
     
     #gkh: AI train
     def AItrain(self):
-            print('ai start')
+            # print('ai start')
         #while True:
             board = self.chessboard.board()
             self.piece_now = BLACK
@@ -233,10 +266,10 @@ class GoBang(QWidget):
             self.BLACKAI.finishSignal.connect(self.BLACKAI_draw)
             self.BLACKAI.start()
             self.BLACKAI.wait()
-            print('end black')
+            # print('end black')
     def whiteAItrain(self):
             self.piece_now = WHITE
-            print('start white')
+            # print('start white')
             board = self.chessboard.board()
             self.WHITEAI = AI(board, 2)
             self.WHITEAI.finishSignal.connect(self.WHITEAI_draw)
@@ -250,7 +283,7 @@ class GoBang(QWidget):
 
     def mousePressEvent(self, e):  # 玩家下棋
         if e.button() == Qt.LeftButton and self.ai_down == True:
-            print("press")
+            # print("press")
             x, y = e.x(), e.y()  # 鼠标坐标
             i, j = self.coordinate_transform_pixel2map(x, y)  # 对应棋盘坐标
             if not i is None and not j is None:  # 棋子落在棋盘上，排除边缘
@@ -268,7 +301,7 @@ class GoBang(QWidget):
                     ########gkh change
                     if self.my_turn == QMessageBox.No:
                         self.AI = AI(board, 1)
-                        print('AI, 123')
+                        # print('AI, 123')
                     else:
                         self.AI = AI(board,2)
                     ##############
@@ -360,6 +393,12 @@ class GoBang(QWidget):
             return i, j
 
     def gameover(self, winner):
+        # global learning_rate_counter, learning_rate
+        # learning_rate_counter += 1
+        # if learning_rate_counter == 10:
+        #     learning_rate = 0.7 * learning_rate
+        #     learning_rate_counter = 0
+        #     print("learning rate changing")
         global now_value, last_value
         ######gkh: game over update 
         f = open('./data/blackweight', 'w')
@@ -377,7 +416,7 @@ class GoBang(QWidget):
             #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             #######gkh wei xiabi xunlian jia
             difference = get_difference(discount)
-            now_value = -50
+            now_value = -500
             if difference != 0:
                 learning_weight(learning_rate, difference, 2)
         else:
@@ -385,7 +424,7 @@ class GoBang(QWidget):
             # reply = QMessageBox.question(self, 'Black Lost!', 'Continue?',
             #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             difference = get_difference(discount)
-            now_value = 50
+            now_value = 500
             if difference != 0:
                 learning_weight(learning_rate, difference, 2)
         # if reply == QMessageBox.Yes:  # 复位
