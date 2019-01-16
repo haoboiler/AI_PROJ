@@ -8,6 +8,7 @@ aiType = None
 black_last_count = [[],[],[]]
 white_last_count = [[],[],[]]
 last_count_for_reward = [[], [], []]
+import random
 #######################
 # evaluation: 棋盘评估类，给当前棋盘打分用
 # ----------------------------------------------------------------------
@@ -169,13 +170,20 @@ class evaluation(object):
             count[WHITE][FOUR] += 1
         if count[BLACK][SFOUR] >= 2:
             count[BLACK][FOUR] += 1
+                    # 具体打分
+        if turn == WHITE:  # 当前是白棋
+            if count[BLACK][FIVE]:
+                return -9999
+            if count[WHITE][FIVE]:
+                return 9999
+        else:  # 当前是黑棋
+            if count[WHITE][FIVE]:
+                return -9999
+            if count[BLACK][FIVE]:
+                return 9999
         if aiType == WHITE:
             #  wzy  ######################################
             if turn == WHITE:
-                if count[BLACK][FIVE]:
-                    return -9999
-                if count[WHITE][FIVE]:
-                    return 9999
                 global whiteweight_list, blackweight_list
                 if turn == WHITE:
                 	weight = whiteweight_list
@@ -191,21 +199,11 @@ class evaluation(object):
                     opponent = WHITE
                 for index in FEATURES:
                     value += weight[index] * count[turn][index] \
-                            + weight[index+offset] * count[opponent][index] 
+                            + weight[index+offset] * count[opponent][index]
                	return value
             ##############################################
 
-            # 具体打分
-        if turn == WHITE:  # 当前是白棋
-            if count[BLACK][FIVE]:
-                return -9999
-            if count[WHITE][FIVE]:
-                return 9999
-        else:  # 当前是黑棋
-            if count[WHITE][FIVE]:
-                return -9999
-            if count[BLACK][FIVE]:
-                return 9999
+
         wvalue, bvalue, win = 0, 0, 0
         if turn == WHITE:
             if count[WHITE][FOUR] > 0: return 9990
@@ -594,6 +592,14 @@ class searcher(object):
         # huzy added
         global aiType
         aiType = turn
+        # huzy random
+        # if aiType == 1:
+        #     moves = self.genmove(turn)
+        #     ran = random.random()
+        #     if ran < 0.3:
+        #         score, row, col = moves[random.randint(1, len(moves)-1)]
+        #         return score, row, col
+        # huzy random
         # huzy added end
         self.maxdepth = depth
         self.bestmove = None

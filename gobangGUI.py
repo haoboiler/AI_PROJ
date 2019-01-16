@@ -6,10 +6,10 @@ from chessboard import ChessBoard
 #gkh: get global value from ai#######
 from ai import searcher, blackweight_list, whiteweight_list , black_last_count, white_last_count, last_count_for_reward
 import copy
-learning_rate = 0.05
+learning_rate = 0.005
 last_value = 0
 now_value =  0
-discount = 0.9
+discount = 0.7
 WIDTH = 540
 HEIGHT = 540
 MARGIN = 22
@@ -53,12 +53,14 @@ def get_reward(turn):
             else:
                 remnant[i][j] = last_count_for_reward[i][j] - black_last_count[i][j]
     if turn == WHITE:
-        reward_weight = [0, 10, 30, 70, 25, 80, 100, 200] # 0 冲二 冲三 冲四 活二 活三 活四 活五
+        reward_weight = [0, 5, 30, 70, 10, 80, 100, 200] # 0 冲二 冲三 冲四 活二 活三 活四 活五
         for c in (FIVE, FOUR, SFOUR, THREE, STHREE, TWO, STWO):
-            reward += reward_weight[c] * remnant[WHITE][c]
-        punish_weight = [0, -20, -60, -140, -50, -160, -200, -400]
+            if remnant[WHITE][c] > 0:
+                reward += reward_weight[c] * remnant[WHITE][c]
+        punish_weight = [0, -10, -60, -140, -20, -160, -200, -400]
         for c in (FIVE, FOUR, SFOUR, THREE, STHREE, TWO, STWO):
-            reward += punish_weight[c] * remnant[BLACK][c]
+            if remnant[BLACK][c] > 0:
+                reward += punish_weight[c] * remnant[BLACK][c]
     else: # not implemented yet
         reward = None
     # print("reward:", reward)
@@ -143,7 +145,7 @@ class BLACKAI(QtCore.QThread):
         # turn, depth
         # turn = 2 玩家先手，AI后手
         # turn = 1 AI先手，玩家后手
-        score, x, y = self.ai.search(self.turn, 2)
+        score, x, y = self.ai.search(self.turn, 1)
         self.finishSignal.emit(x, y)
     
 
@@ -262,7 +264,7 @@ class GoBang(QWidget):
             board = self.chessboard.board()
             self.piece_now = BLACK
             self.black_ai_down = False
-            self.BLACKAI = BLACKAI(board, 1)
+            self.BLACKAI = BLACKAI(board, 2)
             self.BLACKAI.finishSignal.connect(self.BLACKAI_draw)
             self.BLACKAI.start()
             self.BLACKAI.wait()
@@ -415,16 +417,18 @@ class GoBang(QWidget):
             # reply = QMessageBox.question(self, 'Black Win!', 'Continue?',
             #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             #######gkh wei xiabi xunlian jia
+            print("black win")
             difference = get_difference(discount)
-            now_value = -500
+            now_value = -50
             if difference != 0:
                 learning_weight(learning_rate, difference, 2)
         else:
             # self.sound_defeated.play()
             # reply = QMessageBox.question(self, 'Black Lost!', 'Continue?',
             #                              QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            print("white win")
             difference = get_difference(discount)
-            now_value = 500
+            now_value = 50
             if difference != 0:
                 learning_weight(learning_rate, difference, 2)
         # if reply == QMessageBox.Yes:  # 复位
@@ -440,6 +444,8 @@ class GoBang(QWidget):
         self.chessboard.reset()
         self.update()
         self.ai_down = True
+
+
         self.BLACKAI.quit()
         self.WHITEAI.quit()
         self.AItrain()
